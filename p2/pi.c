@@ -25,11 +25,11 @@ int main(int argc, char *argv[]){
         	printf("Enter the number of points: (0 quits) \n");
         	scanf("%d",&n);
 		}
-			
+		
+		// change individual sends to a broadcast
 		MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
     
         if (n == 0) break;
-
         count = 0;  
 
 		// given loop, modified to be relative to numprocs
@@ -47,6 +47,7 @@ int main(int argc, char *argv[]){
         }
 		pi = ((double) count/(double) n)*4.0;
 
+		// reduce pi and pirec as their sum (store at pirec) 
 		MPI_Reduce(&pi, &pirec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		
 		if (rank == 0)
