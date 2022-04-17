@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <mpi.h>
-#include "binomialbcast.c"
+#include "collectives.c"
 
 int main(int argc, char *argv[]){
     int i, done = 0, n, count;
@@ -21,7 +21,7 @@ int main(int argc, char *argv[]){
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     while (!done) {
-		// given the first process, make the sends, print & scan
+		// given the first process, make the print and scan
 		if (rank == 0) {
         	printf("Enter the number of points: (0 quits) \n");
         	scanf("%d",&n);
