@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <mpi.h>
+#include "binomialbcast.c"
 
 int main(int argc, char *argv[]){
     int i, done = 0, n, count;
