@@ -29,7 +29,11 @@ int main(int argc, char *argv[]){
 		
 		// change individual sends to a broadcast
 		MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    
+   
+		// alternatively use:
+		// MPI_FlattreeBcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+		// MPI_BinomialBcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
         if (n == 0) break;
         count = 0;  
 

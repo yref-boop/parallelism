@@ -38,4 +38,25 @@ int MPI_BinomialBcast (void *buffer, int count, MPI_Datatype datatype, int root,
 	MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+	    for (k = 1; k <= ceil(log2(numprocs)); k++)
+		// if process has rank < 2^{k-1}, sends messages 
+        if (rank < pow(2, k-1)) {
+			// destination's rank is rank + 2^{k-1}
+            receiver = rank + pow(2, k-1);
+            if (receiver < numprocs) {
+				// do / check send, if error, return it
+                error = MPI_Send(buffer, count, datatype, receiver, 0, comm);
+                if (error != MPI_SUCCESS) return error;
+            }
+        } else {
+			// if process has rank < 2^k is set to recieve messages
+            if (rank < pow(2, k)) {
+				// source of the message has rank - 2^{k-1}
+                sender = rank - pow(2, k-1);
+				// do / check recive, if error, return it
+                error = MPI_Recv(buffer, count, datatype, sender, 0, comm, &status);
+                if (error != MPI_SUCCESS) return error;
+            }
+        }
+    return MPI_SUCCESS;
 }
