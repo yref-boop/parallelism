@@ -3,9 +3,9 @@
 #include <mpi.h>
 #include <sys/time.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
-#define N 1024
+#define N 32
 
 int main(int argc, char *argv[] ) {
 
@@ -45,24 +45,22 @@ int main(int argc, char *argv[] ) {
 	// scatter matrix data
 	MPI_Scatter (matrix, rows*N, MPI_FLOAT, local_matrix, rows*N, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-
-	// get time
 	gettimeofday(&tv1, NULL);
 
 	// calculate result
-  	for(i=0;i<N;i++) {
-		result[i]=0;
+  	for(i=0;i<rows;i++) {
+		local_result[i]=0;
 		for(j=0;j<N;j++) 
-			result[i] += matrix[i][j]*vector[j];
+			local_result[i] += matrix[i][j]*vector[j];
 	}
 
-	// second time measurement
 	gettimeofday(&tv2, NULL);
+
+	// get value of time
+	int microseconds = (tv2.tv_usec - tv1.tv_usec)+ 1000000 * (tv2.tv_sec - tv1.tv_sec);
 
 	// gather data
 	MPI_Gather (local_result, N*rows, MPI_FLOAT, result, N*rows, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    
-	int microseconds = (tv2.tv_usec - tv1.tv_usec)+ 1000000 * (tv2.tv_sec - tv1.tv_sec);
 
   	// display result
 	if (rank == 0) {
