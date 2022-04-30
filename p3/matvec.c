@@ -5,12 +5,11 @@
 
 #define DEBUG 0
 
-#define N 49
-
-// expected result -> 14 20 26 32
+#define N 1024
 
 int main(int argc, char *argv[] ) {
 
+	// needed variables
 	int i, j, rows, local_msecs; 
 	int *total_msecs;
 	float *local_matrix, *local_result;
@@ -59,12 +58,13 @@ int main(int argc, char *argv[] ) {
 	// get value of time
 	local_msecs = (tv2.tv_usec - tv1.tv_usec) + 1000000 * (tv2.tv_sec - tv1.tv_sec);
 
+	// definition of the size of the recieve ends of the gathers
 	if (rank == 0){
 		result = (float*) malloc(sizeof(float)*N*numprocs*rows);
 		total_msecs = (int *) malloc(sizeof(int)*numprocs);
 	}
 
-	// gather data
+	// gather the results and the time needed to obtain
 	MPI_Gather (local_result, rows, MPI_FLOAT, result, rows, MPI_FLOAT, 0, MPI_COMM_WORLD);
 	MPI_Gather (&local_msecs, 1, MPI_INT, total_msecs, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
@@ -73,11 +73,13 @@ int main(int argc, char *argv[] ) {
 		if (DEBUG)
 			for(i=0;i<N;i++) printf(" %f \t ", result[i]);
 		else
+			// total_msecs stores orderly time needed by each process
 			for (i=0;i<numprocs;i++)
 			printf ("time (seconds) of process %d= %lf\n", rank, (double) total_msecs[i]/1E6);
 	}
 
 	// finalize all threads
 	MPI_Finalize();
+
 	return 0;
 }
