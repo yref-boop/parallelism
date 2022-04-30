@@ -3,14 +3,16 @@
 #include <mpi.h>
 #include <sys/time.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
-#define N 1024
+#define N 4
 
 int main(int argc, char *argv[] ) {
 
 	// needed variables
-	int i, j, rows, local_msecs; 
+	int i, j, rows, local_msecs;
+	int *count;
+	int *displace;
 	int *total_msecs;
 	float *local_matrix, *local_result;
 	float matrix[N][N];
@@ -39,12 +41,29 @@ int main(int argc, char *argv[] ) {
 	// number of rows / process
 	rows = (N + numprocs - 1) / numprocs;
 
+	// initialization of displacement and counting values:
+	count = malloc(sizeof(int)*numprocs);
+	displace = malloc(sizeof(int)*numprocs);
+
+	// calculate conts and displacements
+	int remainder = (N*N)%numprocs;
+	int sum = 0;
+	for (int i = 0; i < numprocs; i++){
+		count[i] = (N*N/numprocs);
+		if (remainder != 0){
+			count[i] ++;
+			remainder --;
+		}
+		displace[i] = sum;
+		sum += count[i];
+	}
+
 	// local submatrices
 	local_matrix = (float *)malloc(sizeof(float)*rows*N);
 	local_result = (float *)malloc(sizeof(float)*rows*N);
 
 	// scatter matrix data
-	MPI_Scatter (matrix, rows*N, MPI_FLOAT, local_matrix, rows*N, MPI_FLOAT, 0, MPI_COMM_WORLD);
+	MPI_Scatterv (matrix, count, displace, MPI_FLOAT, local_matrix, rows*N, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
 	gettimeofday(&tv1, NULL);
 	// calculate result
@@ -64,6 +83,12 @@ int main(int argc, char *argv[] ) {
 		total_msecs = (int *) malloc(sizeof(int)*numprocs);
 	}
 
+	// test
+	printf("rank %d: ", rank);
+	for (int i = 0; i < count[rank]; i++) 
+		printf("%f\t", local_matrix[i]);
+	printf("\n");
+
 	// gather the results and the time needed to obtain
 	MPI_Gather (local_result, rows, MPI_FLOAT, result, rows, MPI_FLOAT, 0, MPI_COMM_WORLD);
 	MPI_Gather (&local_msecs, 1, MPI_INT, total_msecs, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -75,11 +100,10 @@ int main(int argc, char *argv[] ) {
 		else
 			// total_msecs stores orderly time needed by each process
 			for (i=0;i<numprocs;i++)
-			printf ("time (seconds) of process %d= %lf\n", rank, (double) total_msecs[i]/1E6);
+			printf ("time (seconds) of process %d= %lf\n", i, (double) total_msecs[i]/1E6);
 	}
 
 	// finalize all threads
 	MPI_Finalize();
-
 	return 0;
 }
