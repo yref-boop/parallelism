@@ -3,14 +3,14 @@
 #include <mpi.h>
 #include <sys/time.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
-#define N 4
+#define N 1024
 
 int main(int argc, char *argv[] ) {
 
 	// needed variables
-	int i, j, rows, local_msecs;
+	int i, j, local_msecs;
 	int *count;
 	int *displace;
 	int *total_msecs;
@@ -38,36 +38,30 @@ int main(int argc, char *argv[] ) {
 	// every process needs all values of the vector
 	MPI_Bcast (vector, N, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-	// number of rows / process
-	rows = (N + numprocs - 1) / numprocs;
-
 	// initialization of displacement and counting values:
 	count = malloc(sizeof(int)*numprocs);
 	displace = malloc(sizeof(int)*numprocs);
 
 	// calculate conts and displacements
-	int remainder = (N*N)%numprocs;
+	int remainder = N % numprocs;
 	int sum = 0;
+
 	for (int i = 0; i < numprocs; i++){
-		count[i] = (N*N/numprocs);
-		if (remainder != 0){
-			count[i] ++;
-			remainder --;
-		}
-		displace[i] = sum;
+		count[i] = N + remainder*N;
+		displace [i] = sum;
 		sum += count[i];
 	}
 
 	// local submatrices
-	local_matrix = (float *)malloc(sizeof(float)*rows*N);
-	local_result = (float *)malloc(sizeof(float)*rows*N);
+	local_matrix = (float *)malloc(sizeof(float)*count[rank]*N);
+	local_result = (float *)malloc(sizeof(float)*count[rank]*N);
 
 	// scatter matrix data
-	MPI_Scatterv (matrix, count, displace, MPI_FLOAT, local_matrix, rows*N, MPI_FLOAT, 0, MPI_COMM_WORLD);
+	MPI_Scatterv (matrix, count, displace, MPI_FLOAT, local_matrix, count[rank]*N, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
 	gettimeofday(&tv1, NULL);
-	// calculate result
-  	for(i=0;i<rows;i++) {
+	// calculate result	
+  	for(i=0;i<count[rank];i++){
 		local_result[i]=0;
 		for(j=0;j<N;j++)
 			local_result[i] += local_matrix[N*i+j]*vector[j];
@@ -79,18 +73,12 @@ int main(int argc, char *argv[] ) {
 
 	// definition of the size of the recieve ends of the gathers
 	if (rank == 0){
-		result = (float*) malloc(sizeof(float)*N*numprocs*rows);
+		result = (float*) malloc(sizeof(float)*N*numprocs*count[rank]);
 		total_msecs = (int *) malloc(sizeof(int)*numprocs);
 	}
 
-	// test
-	printf("rank %d: ", rank);
-	for (int i = 0; i < count[rank]; i++) 
-		printf("%f\t", local_matrix[i]);
-	printf("\n");
-
 	// gather the results and the time needed to obtain
-	MPI_Gather (local_result, rows, MPI_FLOAT, result, rows, MPI_FLOAT, 0, MPI_COMM_WORLD);
+	MPI_Gather (local_result, count[rank], MPI_FLOAT, result, count[rank], MPI_FLOAT, 0, MPI_COMM_WORLD);
 	MPI_Gather (&local_msecs, 1, MPI_INT, total_msecs, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   	// display result
@@ -105,5 +93,12 @@ int main(int argc, char *argv[] ) {
 
 	// finalize all threads
 	MPI_Finalize();
+
+	// free memory
+	free(local_matrix);
+	free(local_result);
+	free(count);
+	free(displace);
+
 	return 0;
 }
