@@ -3,9 +3,11 @@
 #include <mpi.h>
 #include <sys/time.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
-#define N 32
+#define N 4
+
+// expected result -> 14 20 26 32
 
 int main(int argc, char *argv[] ) {
 
@@ -13,7 +15,7 @@ int main(int argc, char *argv[] ) {
 	float *local_matrix, *local_result;
 	float matrix[N][N];
 	float vector[N];
-	float result[N];
+	float *result;
 	struct timeval  tv1, tv2;
 
 	// mpi variables
@@ -21,7 +23,6 @@ int main(int argc, char *argv[] ) {
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
 
   	// initialize matrix and vector 
 	if (rank == 0){
@@ -45,27 +46,26 @@ int main(int argc, char *argv[] ) {
 	// scatter matrix data
 	MPI_Scatter (matrix, rows*N, MPI_FLOAT, local_matrix, rows*N, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-	gettimeofday(&tv1, NULL);
-
 	// calculate result
   	for(i=0;i<rows;i++) {
 		local_result[i]=0;
-		for(j=0;j<N;j++) 
-			local_result[i] += matrix[i][j]*vector[j];
+		for(j=0;j<N;j++)
+			local_result[i] += local_matrix[N*i+j]*vector[j];
 	}
 
-	gettimeofday(&tv2, NULL);
-
 	// get value of time
-	int microseconds = (tv2.tv_usec - tv1.tv_usec)+ 1000000 * (tv2.tv_sec - tv1.tv_sec);
+	int microseconds = (tv2.tv_usec - tv1.tv_usec) + 1000000 * (tv2.tv_sec - tv1.tv_sec);
+
+	if (rank == 0)
+		result = (float*) malloc(sizeof(float)*N*numprocs*rows);
 
 	// gather data
-	MPI_Gather (local_result, N*rows, MPI_FLOAT, result, N*rows, MPI_FLOAT, 0, MPI_COMM_WORLD);
+	MPI_Gather (local_result, rows, MPI_FLOAT, result, rows, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
   	// display result
 	if (rank == 0) {
 		if (DEBUG)
-			for(i=0;i<N;i++) printf(" %f \t ",result[i]);
+			for(i=0;i<N;i++) printf(" %f \t ", result[i]);
 		else 
 			printf ("Time (seconds) = %lf\n", (double) microseconds/1E6);
 	}
