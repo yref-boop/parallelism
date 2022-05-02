@@ -3,9 +3,9 @@
 #include <mpi.h>
 #include <sys/time.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
-#define N 1024
+#define N 7
 
 int main(int argc, char *argv[] ) {
 
@@ -43,21 +43,34 @@ int main(int argc, char *argv[] ) {
 	displace = malloc(sizeof(int)*numprocs);
 
 	// calculate conts and displacements
+	
 	int remainder = N % numprocs;
+	int division = N / numprocs;
 	int sum = 0;
 
 	for (int i = 0; i < numprocs; i++){
-		count[i] = N + remainder*N;
+		count [i] = N * division;
+		if (remainder) {
+			count[i] += N;
+			remainder--;
+		}
 		displace [i] = sum;
 		sum += count[i];
 	}
+
+	
+	for (int i = 0; i < numprocs; i++){
+		printf("count: %d ", count[i]);
+		printf("displ: %d\n", displace[i]);
+	}
+
 
 	// local submatrices
 	local_matrix = (float *)malloc(sizeof(float)*count[rank]*N);
 	local_result = (float *)malloc(sizeof(float)*count[rank]*N);
 
 	// scatter matrix data
-	MPI_Scatterv (matrix, count, displace, MPI_FLOAT, local_matrix, count[rank]*N, MPI_FLOAT, 0, MPI_COMM_WORLD);
+	MPI_Scatterv (matrix, count, displace, MPI_FLOAT, local_matrix, count[rank], MPI_FLOAT, 0, MPI_COMM_WORLD);
 
 	gettimeofday(&tv1, NULL);
 	// calculate result	
@@ -67,6 +80,13 @@ int main(int argc, char *argv[] ) {
 			local_result[i] += local_matrix[N*i+j]*vector[j];
 	}
 	gettimeofday(&tv2, NULL);
+
+	for(i=0; i<count[rank];i++){
+		printf("rank %d: %f\n", rank, local_matrix[i]);
+	}
+	for(i=0; i<count[rank]/N;i++){
+		printf("RESULT rank %d: %f\n", rank, local_result[i]);
+	}
 
 	// get value of time
 	local_msecs = (tv2.tv_usec - tv1.tv_usec) + 1000000 * (tv2.tv_sec - tv1.tv_sec);
@@ -78,7 +98,7 @@ int main(int argc, char *argv[] ) {
 	}
 
 	// gather the results and the time needed to obtain
-	MPI_Gather (local_result, count[rank], MPI_FLOAT, result, count[rank], MPI_FLOAT, 0, MPI_COMM_WORLD);
+	MPI_Gatherv (local_result, count[rank]/N, MPI_FLOAT, result, count, displace, MPI_FLOAT, 0, MPI_COMM_WORLD);
 	MPI_Gather (&local_msecs, 1, MPI_INT, total_msecs, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   	// display result
