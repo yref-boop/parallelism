@@ -97,8 +97,14 @@ int main(int argc, char *argv[] ) {
 		total_msecs = (int *) malloc(sizeof(int)*numprocs);
 	}
 
+	// prepare use of count and displace for results
+	for (int i = 0; i < numprocs; i++){
+		count[i] /= N;
+		displace[i] /= N;
+	}
+
 	// gather the results and the time needed to obtain
-	MPI_Gatherv (local_result, count[rank]/N, MPI_FLOAT, result, count, displace, MPI_FLOAT, 0, MPI_COMM_WORLD);
+	MPI_Gatherv (local_result, count[rank], MPI_FLOAT, result, count, displace, MPI_FLOAT, 0, MPI_COMM_WORLD);
 	MPI_Gather (&local_msecs, 1, MPI_INT, total_msecs, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   	// display result
