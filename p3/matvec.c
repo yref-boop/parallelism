@@ -3,9 +3,26 @@
 #include <mpi.h>
 #include <sys/time.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
-#define N 7
+#define N 4
+
+void populate(int *count, int *displace, int numprocs) {
+	int remainder = N % numprocs;
+	int division = N / numprocs;
+	int sum = 0;
+
+	// we divide the remainder evengly amongst the processes
+	for (int i = 0; i < numprocs; i++){
+		count [i] = N * division;
+		if (remainder) {
+			count[i] += N;
+			remainder--;
+		}
+		displace [i] = sum;
+		sum += count[i];
+	}
+}
 
 int main(int argc, char *argv[] ) {
 
@@ -38,30 +55,16 @@ int main(int argc, char *argv[] ) {
 	// every process needs all values of the vector
 	MPI_Bcast (vector, N, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-	// initialization of displacement and counting values:
 	count = malloc(sizeof(int)*numprocs);
 	displace = malloc(sizeof(int)*numprocs);
 
-	// calculate conts and displacements
-	int remainder = N % numprocs;
-	int division = N / numprocs;
-	int sum = 0;
-
-	for (int i = 0; i < numprocs; i++){
-		count [i] = N * division;
-		if (remainder) {
-			count[i] += N;
-			remainder--;
-		}
-		displace [i] = sum;
-		sum += count[i];
-	}
+	// calculate counts and displacements
+	populate(count, displace, numprocs);
 	
-	// local submatrices
 	local_matrix = (float *)malloc(sizeof(float)*count[rank]*N);
 	local_result = (float *)malloc(sizeof(float)*count[rank]*N);
 
-	// scatter matrix data
+	// size of each chunk may vary (calculated previously on populate) 
 	MPI_Scatterv (matrix, count, displace, MPI_FLOAT, local_matrix, count[rank], MPI_FLOAT, 0, MPI_COMM_WORLD);
 
 	gettimeofday(&tv1, NULL);
