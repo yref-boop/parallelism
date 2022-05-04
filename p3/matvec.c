@@ -5,7 +5,7 @@
 
 #define DEBUG 0
 
-#define N 5
+#define N 4
 
 void populate(int *count, int *displace, int numprocs) {
 	int remainder = N % numprocs;
@@ -34,7 +34,7 @@ int main(int argc, char *argv[] ) {
 	float *local_matrix, *local_result, *result;
 	float matrix[N][N];
 	float vector[N];
-	struct timeval  tv1, tv2;
+	struct timeval tv1, tv2;
 	struct timeval ct1, ct2;
 
 	// mpi variables
@@ -63,8 +63,12 @@ int main(int argc, char *argv[] ) {
 	local_matrix = (float *)malloc(sizeof(float)*count[rank]*N);
 	local_result = (float *)malloc(sizeof(float)*count[rank]);
 
+
+	gettimeofday(&ct1, NULL);
 	// size of each chunk may vary (calculated previously on populate) 
 	MPI_Scatterv (matrix, count, displace, MPI_FLOAT, local_matrix, count[rank], MPI_FLOAT, 0, MPI_COMM_WORLD);
+	gettimeofday(&ct2,NULL);
+	local_commtime = (ct2.tv_usec - ct1.tv_usec) + 1000000 * (ct2.tv_sec - ct1.tv_sec);
 
 	gettimeofday(&tv1, NULL);
 	// calculate result	
@@ -90,12 +94,12 @@ int main(int argc, char *argv[] ) {
 		total_msecs = (int *) malloc(sizeof(int)*numprocs*count[rank]);
 	}
 
+	gettimeofday(&ct1, NULL);
 	// gather the results and the time needed to obtain
 	MPI_Gatherv (local_result, count[rank], MPI_FLOAT, result, count, displace, MPI_FLOAT, 0, MPI_COMM_WORLD);
 	MPI_Gatherv (&local_msecs, count[rank], MPI_INT, total_msecs, count, displace, MPI_INT, 0, MPI_COMM_WORLD);
-
-	// wait for all processes
-	MPI_Barrier(MPI_COMM_WORLD);
+	gettimeofday(&ct2,NULL);
+	local_commtime += (ct2.tv_usec - ct1.tv_usec) + 1000000 * (ct2.tv_sec - ct1.tv_sec);
 
   	// display result
 	if (!rank) {
@@ -104,8 +108,14 @@ int main(int argc, char *argv[] ) {
 		else
 			// total_msecs stores orderly time needed by each process
 			for (i=0;i<numprocs;i++)
-			printf ("time (seconds) of process %d= %lf\n", i, (double) total_msecs[i]/1E6);
+			printf ("computation time (seconds) of process %d= %lf\n", i, (double) total_msecs[i]/1E6);
 	}
+
+	// wait for all processes
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	if (!DEBUG)
+		printf ("communication time (seconds) of process %d = %lf\n", rank, (double) local_commtime/1E6);
 
 	// free from process 0
 	if (!rank) {
