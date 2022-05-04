@@ -3,9 +3,9 @@
 #include <mpi.h>
 #include <sys/time.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
-#define N 4
+#define N 5
 
 void populate(int *count, int *displace, int numprocs) {
 	int remainder = N % numprocs;
@@ -14,7 +14,9 @@ void populate(int *count, int *displace, int numprocs) {
 
 	// we divide the remainder evengly amongst the processes
 	for (int i = 0; i < numprocs; i++){
+		// initialize common values for all processes 
 		count [i] = N * division;
+		// divide the remainder 1 to each process
 		if (remainder) {
 			count[i] += N;
 			remainder--;
@@ -26,16 +28,14 @@ void populate(int *count, int *displace, int numprocs) {
 
 int main(int argc, char *argv[] ) {
 
-	// needed variables
-	int i, j, local_msecs;
-	int *count;
-	int *displace;
-	int *total_msecs;
-	float *local_matrix, *local_result;
+	// variable definition
+	int i, j, local_msecs, local_commtime;
+	int *count, *displace, *total_msecs;
+	float *local_matrix, *local_result, *result;
 	float matrix[N][N];
 	float vector[N];
-	float *result;
 	struct timeval  tv1, tv2;
+	struct timeval ct1, ct2;
 
 	// mpi variables
 	int numprocs, rank;
@@ -44,13 +44,12 @@ int main(int argc, char *argv[] ) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   	// initialize matrix and vector 
-	if (rank == 0){
+	if (!rank)
 		for(i=0;i<N;i++) {
 			vector[i] = i;
     		for(j=0;j<N;j++) 
 				matrix[i][j] = i+j;
 		}
-	}
 
 	// every process needs all values of the vector
 	MPI_Bcast (vector, N, MPI_FLOAT, 0, MPI_COMM_WORLD);
@@ -62,7 +61,7 @@ int main(int argc, char *argv[] ) {
 	populate(count, displace, numprocs);
 	
 	local_matrix = (float *)malloc(sizeof(float)*count[rank]*N);
-	local_result = (float *)malloc(sizeof(float)*count[rank]*N);
+	local_result = (float *)malloc(sizeof(float)*count[rank]);
 
 	// size of each chunk may vary (calculated previously on populate) 
 	MPI_Scatterv (matrix, count, displace, MPI_FLOAT, local_matrix, count[rank], MPI_FLOAT, 0, MPI_COMM_WORLD);
@@ -86,7 +85,7 @@ int main(int argc, char *argv[] ) {
 	}
 
 	// definition of the size of the recieve ends of the gathers
-	if (rank == 0){
+	if (!rank){
 		result = (float*) malloc(sizeof(float)*numprocs*count[rank]);
 		total_msecs = (int *) malloc(sizeof(int)*numprocs*count[rank]);
 	}
@@ -99,7 +98,7 @@ int main(int argc, char *argv[] ) {
 	MPI_Barrier(MPI_COMM_WORLD);
 
   	// display result
-	if (rank == 0) {
+	if (!rank) {
 		if (DEBUG)
 			for(i=0;i<N;i++) printf(" %f \t ", result[i]);
 		else
@@ -108,14 +107,20 @@ int main(int argc, char *argv[] ) {
 			printf ("time (seconds) of process %d= %lf\n", i, (double) total_msecs[i]/1E6);
 	}
 
-	// finalize all threads
-	MPI_Finalize();
+	// free from process 0
+	if (!rank) {
+		free(result);
+		free(total_msecs);
+	}
 
-	// free memory
+	// free from all processes 
 	free(local_matrix);
 	free(local_result);
 	free(count);
 	free(displace);
+
+	// finalize all threads
+	MPI_Finalize();
 
 	return 0;
 }
