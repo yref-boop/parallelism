@@ -3,9 +3,9 @@
 #include <mpi.h>
 #include <sys/time.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
-#define N 4
+#define N 10
 
 void populate(int *count, int *displace, int numprocs) {
 	int remainder = N % numprocs;
@@ -32,8 +32,7 @@ int main(int argc, char *argv[] ) {
 	int i, j, local_msecs, local_commtime;
 	int *count, *displace, *total_msecs;
 	float *local_matrix, *local_result, *result;
-	float matrix[N][N];
-	float vector[N];
+	float *matrix, *vector;
 	struct timeval tv1, tv2;
 	struct timeval ct1, ct2;
 
@@ -43,13 +42,17 @@ int main(int argc, char *argv[] ) {
 	MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+	vector = (float *)malloc(sizeof(float)*N);
+
   	// initialize matrix and vector 
-	if (!rank)
+	if (!rank) {
+		matrix = (float *)malloc(sizeof(float)*N*N);
 		for(i=0;i<N;i++) {
 			vector[i] = i;
     		for(j=0;j<N;j++) 
-				matrix[i][j] = i+j;
+				matrix[N*i+j] = i+j;
 		}
+	}
 
 	// every process needs all values of the vector
 	MPI_Bcast (vector, N, MPI_FLOAT, 0, MPI_COMM_WORLD);
