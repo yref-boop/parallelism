@@ -33,13 +33,13 @@ int MPI_BinomialBcast (void *buffer, int count, MPI_Datatype datatype, int root,
 	int numprocs, rank;
 	int receiver, sender;
 
-	// mpi variables 
+	// mpi variables
 	MPI_Status status;
 	MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	    for (k = 1; k <= ceil(log2(numprocs)); k++)
-		// if process has rank < 2^{k-1}, sends messages 
+		// if process has rank < 2^{k-1}, sends messages
         if (rank < pow(2, k-1)) {
 			// destination's rank is rank + 2^{k-1}
             receiver = rank + pow(2, k-1);

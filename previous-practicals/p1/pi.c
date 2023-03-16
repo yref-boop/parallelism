@@ -32,10 +32,10 @@ int main(int argc, char *argv[])
 		} else
 			// each process is set to recieve a message sent 
 			MPI_Recv(&n, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-    
+
         if (n == 0) break;
 
-        count = 0;  
+        count = 0;
 
 		// given loop, modified to be relative to numprocs
 		for (i = rank + 1; i <= n; i += numprocs) {
