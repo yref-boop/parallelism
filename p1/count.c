@@ -3,6 +3,40 @@
 #include <math.h>
 #include <mpi.h>
 
+int MPI_BinomialBcast (void *buffer, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
+    int error, k;
+    int processes, rank;
+    int receiver, sender;
+
+    //MPI variables
+    MPI_Status status;
+    MPI_Comm_size (MPI_COMM_WORLD, &processes);
+    MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+
+    for (k = 1; k <= (ceil (log2 (processes))); k++) {
+
+        // rank < 2^{k-1} sends messages
+        if (rank < pow (2, k-1)) {
+            receiver = rank + pow (2, k-1);
+            if (receiver < processes) {
+                error = MPI_Send (buffer, count, datatype, receiver, 0, comm);
+                if (error != MPI_SUCCESS)
+                    return error;
+            }
+        }
+        // rank >= 2^{k-1} receives messages
+        else {
+            if (rank < pow (2, k)) {
+                sender = rank - pow (2, k-1);
+                error = MPI_Recv (buffer, count, datatype, sender, 0, comm, &status);
+                if (error != MPI_SUCCESS)
+                    return error;
+            }
+        }
+    }
+    return MPI_SUCCESS;
+}
+
 void initialize_string (char *string, int n){
     int i;
 
@@ -33,13 +67,13 @@ int main (int argc, char *argv[]) {
     // auxiliar variables
     int i, j, k;
     int recv_count;
-    int numprocs, rank;
+    int processes, rank;
 
     // needed mpi variables
     MPI_Status status;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-    MPI_Comm_size (MPI_COMM_WORLD, &numprocs);
+    MPI_Comm_size (MPI_COMM_WORLD, &processes);
 
 
     if (!rank) {
@@ -49,15 +83,15 @@ int main (int argc, char *argv[]) {
     }
 
     // share input values with other threads
-    MPI_Bcast (&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast (&L, 1, MPI_CHAR, 0, MPI_COMM_WORLD);
+    MPI_BinomialBcast (&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_BinomialBcast (&L, 1, MPI_CHAR, 0, MPI_COMM_WORLD);
 
     // initialize string
     string = (char *) malloc (n*sizeof (char));
     initialize_string (string, n);
 
     // count occurences in this thread
-    for (k = rank; k < n; k += numprocs)
+    for (k = rank; k < n; k += processes)
         if (string[k] == L)
             count++;
 
