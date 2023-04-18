@@ -21,17 +21,17 @@ void initialize_string (char *string, int n){
 
 int main (int argc, char *argv[]) {
     if (argc != 3){
-        printf("Incorrect argument number\nsyntaxis should follow: program n L\n  program (program name)\n  n (string size)\n  L (character to look for) (A, C, G o T)\n");
+        printf ("Incorrect argument number\nsyntaxis should follow: program n L\n  program (program name)\n  n (string size)\n  L (character to look for) (A, C, G o T)\n");
         exit(1);
     }
  
-    int i, n, count = 0;
+    // initial values
+    int n, count = 0;
     char *string;
     char L;
 
     // auxiliar variables
-    int rec_n;
-    char rec_L;
+    int i, j, k;
     int recv_count;
     int numprocs, rank;
 
@@ -41,6 +41,7 @@ int main (int argc, char *argv[]) {
     MPI_Comm_rank (MPI_COMM_WORLD, &rank);
     MPI_Comm_size (MPI_COMM_WORLD, &numprocs);
 
+
     if (rank == 0) {
 
         // get input values on first thread
@@ -48,7 +49,7 @@ int main (int argc, char *argv[]) {
         L = *argv[2];
 
         // share input values with other threads
-        int i = numprocs;
+        i = numprocs;
         while (i-- > 1) {
             MPI_Send (&n, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
             MPI_Send (&L, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
@@ -65,13 +66,11 @@ int main (int argc, char *argv[]) {
         string = (char *) malloc (n*sizeof (char));
         initialize_string (string, n);
 
-        // count ocurences in this thread
-        for (int k = rank-1; k < n; k += numprocs-1)
+        // count occurences in this thread
+        for (k = rank-1; k < n; k += numprocs-1)
             if (string[k] == L)
                 count++;
 
-        if (rank == 2)
-            printf ("string: %s", string);
         free (string);
 
         // send the number of occurences to process 0
@@ -81,7 +80,7 @@ int main (int argc, char *argv[]) {
     if (!rank) {
 
         // get count from all processes
-        int j = numprocs;
+        j = numprocs;
         while (j-- > 1) {
             MPI_Recv (&recv_count, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
             count += recv_count;
