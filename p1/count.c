@@ -52,7 +52,7 @@ int main (int argc, char *argv[]) {
         i = numprocs;
         while (i-- > 1) {
             MPI_Send (&n, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-            MPI_Send (&L, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+            MPI_Send (&L, 1, MPI_CHAR, i, 0, MPI_COMM_WORLD);
         }
     }
 
@@ -60,7 +60,7 @@ int main (int argc, char *argv[]) {
 
         // get input values from thread #0
         MPI_Recv (&n, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-        MPI_Recv (&L, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        MPI_Recv (&L, 1, MPI_CHAR, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
     }
 
