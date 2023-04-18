@@ -4,7 +4,7 @@
 #include <mpi.h>
 
 int MPI_BinomialBcast (void *buffer, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
-    int error, k;
+    int error, i;
     int processes, rank;
     int receiver, sender;
 
@@ -13,11 +13,11 @@ int MPI_BinomialBcast (void *buffer, int count, MPI_Datatype datatype, int root,
     MPI_Comm_size (MPI_COMM_WORLD, &processes);
     MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 
-    for (k = 1; k <= (ceil (log2 (processes))); k++) {
+    for (i = 1; i <= (ceil (log2 (processes))); i++) {
 
         // rank < 2^{k-1} sends messages
-        if (rank < pow (2, k-1)) {
-            receiver = rank + pow (2, k-1);
+        if (rank < pow (2, i-1)) {
+            receiver = rank + pow (2, i-1);
             if (receiver < processes) {
                 error = MPI_Send (buffer, count, datatype, receiver, 0, comm);
                 if (error != MPI_SUCCESS)
@@ -26,12 +26,42 @@ int MPI_BinomialBcast (void *buffer, int count, MPI_Datatype datatype, int root,
         }
         // rank >= 2^{k-1} receives messages
         else {
-            if (rank < pow (2, k)) {
-                sender = rank - pow (2, k-1);
+            if (rank < pow (2, i)) {
+                sender = rank - pow (2, i-1);
                 error = MPI_Recv (buffer, count, datatype, sender, 0, comm, &status);
                 if (error != MPI_SUCCESS)
                     return error;
             }
+        }
+    }
+    return MPI_SUCCESS;
+}
+
+
+int MPI_FlattreeCollective (int *sendbuf, int *recvbuf, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
+    int error, i;
+    int processes, rank;
+
+    //MPI variables
+    MPI_Status status;
+    MPI_Comm_size (MPI_COMM_WORLD, &processes);
+    MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+
+    // all processes send their data to #0
+    if (rank) {
+        error = MPI_Send (sendbuf, count, datatype, 0, 0, comm);
+        if (error != MPI_SUCCESS)
+            return error;
+    }
+
+    // process #0 receives & sums all data from others
+    if (!rank) {
+        i = processes;
+        while (i-- > 1) {
+            error = MPI_Recv (recvbuf, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+            if (error != MPI_SUCCESS)
+                return error;
+            *sendbuf = *sendbuf + *recvbuf;
         }
     }
     return MPI_SUCCESS;
@@ -99,11 +129,11 @@ int main (int argc, char *argv[]) {
     free (string);
 
     // reduce count as its sum with each recv_count
-    MPI_Reduce (&count, &recv_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_FlattreeCollective (&count, &recv_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     // print the results
     if (!rank)
-        printf ("character %c appears %d times\n", L, recv_count);
+        printf ("character %c appears %d times\n", L, count);
 
     // finalize all processes
     MPI_Finalize();
