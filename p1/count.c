@@ -38,6 +38,7 @@ int main (int argc, char *argv[]) {
     // needed mpi variables
     MPI_Status status;
     MPI_Init(&argc, &argv);
+    MPI_Comm_rank (MPI_COMM_WORLD, &rank);
     MPI_Comm_size (MPI_COMM_WORLD, &numprocs);
 
     if (rank == 0) {
@@ -60,20 +61,17 @@ int main (int argc, char *argv[]) {
         MPI_Recv (&n, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
         MPI_Recv (&L, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
-        printf ("%d, %d\n", rank, n);
         // initialize string
         string = (char *) malloc (n*sizeof (char));
         initialize_string (string, n);
 
         // count ocurences in this thread
-        count = 0;
-
-        int pos = rank;
-        while (pos += numprocs < n)
-            if (string[pos] == L)
+        for (int k = rank-1; k < n; k += numprocs-1)
+            if (string[k] == L)
                 count++;
 
-        printf ("process %d\ncount; %d\nstring: %s", rank, count, string);
+        if (rank == 2)
+            printf ("string: %s", string);
         free (string);
 
         // send the number of occurences to process 0
@@ -84,7 +82,7 @@ int main (int argc, char *argv[]) {
 
         // get count from all processes
         int j = numprocs;
-        while (j-- < 1) {
+        while (j-- > 1) {
             MPI_Recv (&recv_count, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
             count += recv_count;
         }
