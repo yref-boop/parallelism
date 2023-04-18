@@ -43,24 +43,14 @@ int main (int argc, char *argv[]) {
 
 
     if (!rank) {
-
         // get input values on first thread
         n = atoi (argv[1]);
         L = *argv[2];
-
-        // share input values with other threads
-        i = numprocs;
-        while (i-- > 1) {
-            MPI_Send (&n, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-            MPI_Send (&L, 1, MPI_CHAR, i, 0, MPI_COMM_WORLD);
-        }
     }
 
-    if (rank) {
-        // get input values from thread #0
-        MPI_Recv (&n, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-        MPI_Recv (&L, 1, MPI_CHAR, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-    }
+    // share input values with other threads
+    MPI_Bcast (&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast (&L, 1, MPI_CHAR, 0, MPI_COMM_WORLD);
 
     // initialize string
     string = (char *) malloc (n*sizeof (char));
@@ -74,21 +64,13 @@ int main (int argc, char *argv[]) {
     // free string memory
     free (string);
 
-    if (rank)
-        // send the number of occurences to process 0
-        MPI_Send (&count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+    // reduce count as its sum with each recv_count
+    MPI_Reduce (&count, &recv_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    if (!rank) {
-        // get count from all processes
-        j = numprocs;
-        while (j-- > 1) {
-            MPI_Recv (&recv_count, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-            count += recv_count;
-        }
+    // print the results
+    if (!rank)
+        printf ("character %c appears %d times\n", L, recv_count);
 
-        // print the results
-        printf ("character %c appears %d times\n", L, count);
-    }
     // finalize all processes
     MPI_Finalize();
 }
