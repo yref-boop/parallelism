@@ -42,7 +42,7 @@ int main (int argc, char *argv[]) {
     MPI_Comm_size (MPI_COMM_WORLD, &numprocs);
 
 
-    if (rank == 0) {
+    if (!rank) {
 
         // get input values on first thread
         n = atoi (argv[1]);
@@ -57,11 +57,9 @@ int main (int argc, char *argv[]) {
     }
 
     if (rank) {
-
         // get input values from thread #0
         MPI_Recv (&n, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
         MPI_Recv (&L, 1, MPI_CHAR, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-
     }
 
     // initialize string
@@ -81,7 +79,6 @@ int main (int argc, char *argv[]) {
         MPI_Send (&count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
 
     if (!rank) {
-
         // get count from all processes
         j = numprocs;
         while (j-- > 1) {
