@@ -62,20 +62,23 @@ int main (int argc, char *argv[]) {
         MPI_Recv (&n, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
         MPI_Recv (&L, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
-        // initialize string
-        string = (char *) malloc (n*sizeof (char));
-        initialize_string (string, n);
+    }
 
-        // count occurences in this thread
-        for (k = rank-1; k < n; k += numprocs-1)
-            if (string[k] == L)
-                count++;
+    // initialize string
+    string = (char *) malloc (n*sizeof (char));
+    initialize_string (string, n);
 
-        free (string);
+    // count occurences in this thread
+    for (k = rank; k < n; k += numprocs)
+        if (string[k] == L)
+            count++;
 
+    // free string memory
+    free (string);
+
+    if (rank)
         // send the number of occurences to process 0
         MPI_Send (&count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    }
 
     if (!rank) {
 
