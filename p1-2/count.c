@@ -19,6 +19,7 @@ int MPI_BinomialBcast (void *buffer, int count, MPI_Datatype datatype, int root,
         if (rank < pow (2, i-1)) {
             receiver = rank + pow (2, i-1);
             if (receiver < processes) {
+                printf("im process %d, sending to %d\n", rank, receiver);
                 error = MPI_Send (buffer, count, datatype, receiver, 0, comm);
                 if (error != MPI_SUCCESS)
                     return error;

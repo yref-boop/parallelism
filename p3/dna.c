@@ -12,8 +12,8 @@
    T -> 3
    N -> 4*/
 
-#define M  8    // number of sequences
-#define N  4    // number of bases per sequence
+#define M  10 // number of sequences
+#define N  20000    // number of bases per sequence
 
 unsigned int g_seed = 0;
 
@@ -59,7 +59,7 @@ int main (int argc, char *argv[] ) {
     int communication_tag = 111;
     int processing_tag = 59;
 
-    MPI_Init(&argc, &argv);
+    MPI_Init (&argc, &argv);
 
     MPI_Status status;
     MPI_Comm_size (MPI_COMM_WORLD, &processes);
@@ -67,6 +67,13 @@ int main (int argc, char *argv[] ) {
 
     // calculate block_size
     block_size = M / processes + (M % processes ? 1 : 0);
+
+    // redefinition of block_size on last process
+    if (M/processes)
+        local_block_size = block_size;
+    else
+        if (rank < (M % processes))
+            local_block_size++;
 
     // initialize matrices on first thread
     if (!rank) {
@@ -98,11 +105,6 @@ int main (int argc, char *argv[] ) {
 
     gettimeofday (&tv2, NULL);
 
-    // redefinition of block_size on last process
-    if (rank == processes - 1)
-        local_block_size = M - block_size * (processes-1);
-    else
-        local_block_size = block_size;
 
     // calculate partial result on all processes
     for (i = 0; i < local_block_size; i++) {
